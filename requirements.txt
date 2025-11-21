@@ -1,58 +1,38 @@
-tenacity<9.0.0
-
-# Core Dependencies
+# Env
 python-dotenv==1.0.1
 
-# CRITICAL: SQLAlchemy version constraint for langchain-community
-sqlalchemy>=1.4,<2.0.36
+# Flask Web Server
+flask==3.1.2
+werkzeug==3.1.3
+gunicorn==21.2.0
 
-# LangChain Ecosystem (All versions must align)
+# LangChain Core (NO heavy local ML)
 langchain==0.3.7
-langchain-community==0.3.7
 langchain-core==0.3.19
+langchain-community==0.3.7
 langchain-text-splitters==0.3.2
 langchain-groq==0.2.1
 langsmith==0.1.143
 
-# Document Processing
+# Basic RAG utilities (no local embedding models)
+python-magic==0.4.27
 pypdf==5.1.0
 pymupdf==1.24.14
 PyPDF2==3.0.1
 unstructured[xlsx]==0.11.8
 openpyxl==3.1.5
-python-magic==0.4.27
 
-# Embeddings & ML
-torch==2.2.2  # Compatible with Python 3.12
-pandas==2.1.4
-transformers==4.44.2
-sentence-transformers==3.3.1  # ADDED - Required for BGE models
+# Light compute libraries (safe)
 numpy==1.26.4
-tokenizers==0.19.1
-sentencepiece==0.2.0
-huggingface-hub==0.26.2
-
-# Vector Store
-chromadb==0.4.18
-pydantic==2.9.2  # ChromaDB 0.4.22 requires this
-pydantic-settings==2.11.0
-onnxruntime==1.19.2  # Required by ChromaDB
-
-# Document Processing & Utilities
+pandas==2.1.4
 tqdm==4.67.1
 requests==2.32.3
 packaging==24.2
 typing-extensions==4.12.2
 
-
-# Web Framework
-flask==3.1.2
-werkzeug==3.1.3
-
-# Google Cloud (for Vertex AI)
-google-cloud-aiplatform==1.71.1
+# Google Cloud STT + TTS
 google-cloud-speech==2.24.0
 google-cloud-texttospeech==2.15.0
-ffmpeg-python==0.2.0
 
-gunicorn==21.2.0
+# FFmpeg wrapper
+ffmpeg-python==0.2.0
