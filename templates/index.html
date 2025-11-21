@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company RAG Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #5568d3;
+        }
+
+        /* Admin panel */
+        #adminPanel {
+            margin-top: 15px;
+            display: none;
+        }
+
+        #adminPanel input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+
+        #unlockBtn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #waveform {
+            position: absolute;
+            bottom: 0;     /* Adjust to where you want it */
+            left: 40%;
+            transform: translateX(-50%);
+            z-index: 10;
+
+            background: rgba(255,255,255,0.8);
+            border-radius: 8px;
+            height: 28px !important;
+            padding: 5px;
+
+            display: none;   /* stays hidden until active */
+        }
+
+        .error-text {
+            color: #dc3545;
+            margin-top: 8px;
+        }
+
+        .success-text {
+            color: #28a745;
+            margin-top: 8px;
+        }
+
+        .upload-real {
+            display: none;
+            margin-top: 15px;
+        }
+
+        /* Stats */
+        .stats-section {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-item h4 {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .stat-item p {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-timestamp {
+            font-size: 11px;
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+
+        .sources {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .sources-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .source-item {
+            margin: 3px 0;
+            color: #6c757d;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            position: relative;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Citation toggle */
+        #citationToggleBox {
+            margin: 10px 0;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: fit-content;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* MIC BUTTON (minimal styling to match send button theme) */
+        .mic-btn.off {
+            background: #6c757d !important;  /* grey */
+            color: white !important;
+            border: none !important;
+        }
+
+        #micBtn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #micBtn.recording {
+            background: #dc3545;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #28a745;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            animation: slideInRight 0.3s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* ====================================================
+    MIC + VOICE DROPDOWN COMBO
+    ==================================================== */
+
+        .voice-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            position: relative;
+        }
+
+        .mic-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .mic-btn.recording {
+            background: #d9534f;
+        }
+
+        .voice-arrow {
+            width: 35px;
+            height: 55px;
+            border-radius: 10px;
+            background: white;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .voice-arrow:hover {
+            background: #f1f3f5;
+        }
+
+        .voice-menu {
+            position: absolute;
+            bottom: 65px;
+            left: 0;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .voice-menu label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: block;
+            color: #444;
+        }
+
+        .voice-menu select {
+            width: 180px;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+
+            <div class="sidebar-header">
+                <h2>📚 Document Manager</h2>
+                <p>Upload & manage company docs</p>
+            </div>
+
+            <div class="upload-section">
+                <button class="upload-btn" id="openAdminBtn">🔐 Admin Upload</button>
+
+                <!-- Admin panel (hidden initially) -->
+                <div id="adminPanel" style="display:none; position:relative;">
+                    <h3>Superadmin Upload</h3>
+
+                    <input type="password" id="adminPassword" placeholder="Enter password" class="admin-input" />
+
+                    <button id="unlockBtn" class="admin-btn">Unlock</button>
+
+                    <!-- REAL UPLOAD SECTION (only one!) -->
+                    <div id="realUpload" style="display:none; margin-top:15px; position:relative; ">
+                        <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls" style="display:none;">
+                        <button id="uploadBtn" class="upload-btn">📤 Upload Document</button>
+                    </div>
+
+                    <div id="adminMessage"></div>
+                </div>
+
+            </div>
+
+            <div class="stats-section">
+                <div class="stat-item">
+                    <h4>TOTAL DOCUMENTS</h4>
+                    <p id="totalDocs">Loading...</p>
+                </div>
+                <div class="stat-item">
+                    <h4>SYSTEM STATUS</h4>
+                    <p id="systemStatus">Ready</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>💬 Company Information Assistant</h1>
+                <p style="font-size: 14px; opacity: 0.9; margin-top: 5px;">Ask me anything about the company!</p>
+            </div>
+
+            <div id="citationToggleBox">
+                <label style="padding: 20px;">
+                    <input type="checkbox" id="citationToggle"> Show Citations
+                </label>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot">
+                    <div class="message-content">
+                        👋 Hello! I'm your company information assistant. I can answer questions based on the uploaded
+                        documents. How can I help you today?
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===========================
+                CHAT INPUT + VOICE UI
+                =========================== -->
+            <div class="chat-input-container">
+
+                <div class="chat-input-wrapper">
+
+                    <!-- Text Input -->
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Type your question here..."
+                        onkeypress="handleKeyPress(event)" />
+
+                    <!-- 🎤 MIC + ▼ VOICE SELECTOR -->
+                    <div class="voice-wrapper">
+
+                        <!-- Mic button -->
+                        <button class="mic-btn" id="micBtn">
+                            🎤
+                        </button>
+
+                        <!-- Dropdown arrow -->
+                        <button class="voice-arrow" onclick="toggleVoiceMenu()">
+                            ▼
+                        </button>
+
+                        <!-- Floating voice menu -->
+                        <div id="voiceMenu" class="voice-menu">
+                            <label>Select Assistant Voice</label>
+                            <select id="voiceSelector">
+                                <option value="en-US-Neural2-J">Male Professional</option>
+                                <option value="en-US-Neural2-F">Female Professional</option>
+                                <option value="en-US-Neural2-D">Male Casual</option>
+                                <option value="en-US-Neural2-C">Female Casual</option>
+                                <option value="en-US-Neural2-A">Male Warm</option>
+                                <option value="en-US-Neural2-E">Female Warm</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Send Button -->
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        Send
+                    </button>
+                </div>
+
+                <!-- Voice Status -->
+                <div id="voiceStatus" style="padding-left:10px; font-size:14px; color:#764ba2; margin-top:5px;"></div>
+
+                <!-- Waveform Canvas -->
+                <canvas id="waveform" width="260" height="40" style="margin-top:10px; display:none;"></canvas>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden audio player for TTS -->
+    <audio id="ttsPlayer" style="display:none;"></audio>
+
+    <!-- Notification Popup -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+
+        // ======================
+        // GLOBAL STATE
+        // ======================
+
+        let adminUnlocked = false;
+        let showCitations = false;
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioContext = null;
+        let analyser = null;
+        let sourceNode = null;
+        let currentStream = null;
+
+        let isRecording = false;
+        let manualStop = false;
+        let isToggleRecording = false;
+
+        let voiceSelector = null;
+        let micBtn = null;
+
+        let selectedVoice = "en-US-Neural2-J"; // default
+
+
+        // ======================
+        // PAGE INITIALIZATION
+        // ======================
+
+        const voiceStatus = document.getElementById("voiceStatus");
+        const waveformCanvas = document.getElementById("waveform");
+
+        window.onload = () => {
+            // Assign all DOM elements safely (AFTER DOM loads)
+            micBtn = document.getElementById("micBtn");
+            voiceSelector = document.getElementById("voiceSelector");
+
+            loadStats();
+
+            // Chat listeners
+            document.getElementById("sendBtn").addEventListener("click", sendMessage);
+            document.getElementById("chatInput").addEventListener("keypress", e => {
+                if (e.key === "Enter") sendMessage();
+            });
+
+            // Admin panel
+            document.getElementById("openAdminBtn").addEventListener("click", () => {
+                document.getElementById("adminPanel").style.display = "block";
+            });
+
+            document.getElementById("unlockBtn").addEventListener("click", unlockAdmin);
+
+            // File upload
+            document.getElementById("uploadBtn").addEventListener("click", () => {
+                adminUnlocked
+                    ? document.getElementById("fileInput").click()
+                    : showNotification("🔒 Superadmin only", "error");
+            });
+
+            document.getElementById("fileInput").addEventListener("change", handleFileSelect);
+
+            // Citations
+            document.getElementById("citationToggle").addEventListener("change", () => {
+                showCitations = document.getElementById("citationToggle").checked;
+            });
+
+            // MIC BUTTON
+            micBtn.addEventListener("click", toggleRecording);
+        };
+
+
+        // ======================
+        // ADMIN PANEL
+        // ======================
+
+        function unlockAdmin() {
+            const pass = document.getElementById("adminPassword").value.trim();
+
+            if (!pass) {
+                showNotification("Enter superadmin password", "error");
+                return;
+            }
+
+            // Validate with backend
+            fetch("/api/check-admin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password: pass })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.valid) {
+                        adminUnlocked = true;
+                        showNotification("🔓 Admin access granted", "success");
+
+                        document.getElementById("realUpload").style.display = "block";
+                        document.getElementById("adminMessage").innerHTML = "";
+
+                    } else {
+                        showNotification("❌ Incorrect password", "error");
+                    }
+                })
+                .catch(err => showNotification("Server error: " + err, "error"));
+        }
+
+
+        // ======================
+        // FILE UPLOAD
+        // ======================
+
+        function handleFileSelect(e) {
+            if (!adminUnlocked) {
+                showNotification("🔒 Only superadmin can upload files", "error");
+                return;
+            }
+
+            const file = e.target.files[0];
+            if (file) uploadFile(file);
+        }
+
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("superadmin_password", document.getElementById("adminPassword").value.trim());
+
+
+            showNotification("Uploading & processing document...", "info");
+
+            fetch("/api/upload", {
+                method: "POST",
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        showNotification("❌ " + data.error, "error");
+                    } else {
+                        showNotification("📄 " + data.message, "success");
+                        loadStats();
+                    }
+                })
+                .catch(err => showNotification("Upload failed: " + err, "error"));
+
+            document.getElementById("fileInput").value = "";
+        }
+
+
+        // ======================
+        // LOAD SYSTEM STATS
+        // ======================
+
+        function loadStats() {
+            fetch("/api/stats")
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("totalDocs").textContent = data.total_documents;
+                    document.getElementById("systemStatus").textContent = data.status;
+                })
+                .catch(err => console.error("Stats error:", err));
+        }
+
+
+        // ======================
+        // CHATBOT
+        // ======================
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") sendMessage();
+        }
+
+
+        function sendMessage() {
+            const input = document.getElementById("chatInput");
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            addMessage(message, "user");
+            input.value = "";
+
+            showTypingIndicator();
+
+            fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: message,
+                    show_citations: showCitations
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    hideTypingIndicator();
+
+                    if (data.error) {
+                        addMessage("Error: " + data.error, "bot");
+                    } else {
+                        addMessage(data.answer, "bot", showCitations ? data.sources : null);
+                    }
+                })
+                .catch(err => {
+                    hideTypingIndicator();
+                    addMessage("Sorry, something went wrong.", "bot");
+                });
+        }
+
+
+        // ======================
+        // ADD MESSAGE TO UI
+        // ======================
+
+        function addMessage(text, sender, sources = null) {
+            const messages = document.getElementById("chatMessages");
+            const wrapper = document.createElement("div");
+            wrapper.className = "message " + sender;
+
+            let sourcesHtml = "";
+            if (sources && sources.length > 0) {
+                sourcesHtml = `<div class="sources"><strong>📚 Sources:</strong><br>`;
+                sources.forEach((src, i) => {
+                    sourcesHtml += `${i + 1}. ${src.source} (p.${src.page}) &nbsp; <span style="color:#888">score ${src.score}</span><br>`;
+                });
+                sourcesHtml += `</div>`;
+            }
+
+            wrapper.innerHTML = `
+                <div class="message-content">
+                    ${text}
+                    ${sourcesHtml}
+                    <div class="message-timestamp">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+
+            messages.appendChild(wrapper);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+
+        // ======================
+        // TYPING INDICATOR
+        // ======================
+
+        function showTypingIndicator() {
+            const messages = document.getElementById("chatMessages");
+            const div = document.createElement("div");
+            div.className = "message bot";
+            div.id = "typingIndicator";
+
+            div.innerHTML = `
+                <div class="typing-indicator active">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const el = document.getElementById("typingIndicator");
+            if (el) el.remove();
+        }
+
+        /* ====================================================
+            VOICE MENU DROPDOWN
+            ==================================================== */
+        function toggleVoiceMenu() {
+            const menu = document.getElementById("voiceMenu");
+            menu.style.display = (menu.style.display === "block") ? "none" : "block";
+        }
+
+        // close menu when clicking outside
+        document.addEventListener("click", function (e) {
+            const menu = document.getElementById("voiceMenu");
+            const arrow = document.querySelector(".voice-arrow");
+            const wrapper = document.querySelector(".voice-wrapper");
+
+            if (!wrapper.contains(e.target)) {
+                menu.style.display = "none";
+            }
+        });
+
+
+        /* ======================================================
+            LIVE STATUS CAPTION
+            ====================================================== */
+        function setVoiceStatus(msg) {
+            voiceStatus.textContent = msg;
+            console.log("🔊 Voice Status:", msg);
+        }
+
+        /* ======================================================
+            WAVEFORM ANIMATION
+            ====================================================== */
+        function startWaveform() {
+            console.log("🌊 Starting waveform animation");
+            waveformCanvas.style.display = "block";
+            const ctx = waveformCanvas.getContext("2d");
+
+            function draw() {
+                // Check if analyser exists (not isRecording flag)
+                if (!analyser) {
+                    console.log("⏹️ Waveform stopped - no analyser");
+                    ctx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+                    waveformCanvas.style.display = "none";
+                    return;
+                }
+
+                requestAnimationFrame(draw);
+
+                let data = new Uint8Array(analyser.fftSize);
+                analyser.getByteTimeDomainData(data);
+
+                ctx.fillStyle = "#f8f9fa";
+                ctx.fillRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#667eea";
+                ctx.beginPath();
+
+                const slice = waveformCanvas.width / data.length;
+                let x = 0;
+
+                for (let i = 0; i < data.length; i++) {
+                    const v = data[i] / 128.0;
+                    const y = v * waveformCanvas.height / 2;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+
+                    x += slice;
+                }
+
+                ctx.stroke();
+            }
+
+            draw();
+        }
+
+        function stopWaveform() {
+            console.log("🛑 Stopping waveform");
+            waveformCanvas.style.display = "none";
+        }
+
+        /* ======================================================
+            MAIN MIC BUTTON — Continuous Listening Start/Stop
+            ====================================================== */
+        async function toggleRecording() {
+
+            // Detect double-click → hard shutdown
+            if (toggleRecording.lastClick && Date.now() - toggleRecording.lastClick < 300) {
+                console.log("🛑 DOUBLE CLICK → HARD SHUTDOWN");
+                forceStopRecording();
+                return;
+            }
+            toggleRecording.lastClick = Date.now();
+
+            if (isToggleRecording) {
+                console.log("⏳ Please wait, mic is initializing...");
+                return;
+            }
+
+            console.log("🎤 toggleRecording() hit — current:", isRecording);
+
+            if (!isRecording) {
+                // START
+                manualStop = false;
+                isRecording = true;
+
+                micBtn.classList.remove("off");
+                micBtn.classList.add("recording");
+                micBtn.textContent = "🎙️";
+                setVoiceStatus("Listening…");
+
+                try {
+                    await startContinuousRecording();
+                } catch (err) {
+                    console.error("❌ Mic initialization error:", err);
+                    showNotification("Microphone failed: " + err.message, "error");
+                    isRecording = false;
+                    micBtn.classList.remove("recording");
+                    micBtn.textContent = "🎤";
+                    setVoiceStatus("Microphone error");
+                }
+
+                isToggleRecording = false;
+                return;
+            }
+
+            // STOP
+            manualStop = true;
+            isRecording = false;
+
+            micBtn.classList.remove("recording");
+            micBtn.classList.add("off");
+            micBtn.textContent = "🎤";
+
+            setVoiceStatus("Microphone off");
+            stopWaveform();
+
+            // ❌ DO NOT null out onstop and do NOT clear audioChunks here
+            // mediaRecorder && (mediaRecorder.onstop = null);   // ← remove this
+
+            try {
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    mediaRecorder.stop();  // This will trigger mediaRecorder.onstop
+                }
+            } catch (err) {
+                console.error("Error stopping recorder:", err);
+            }
+
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+
+            // Optional:
+            // audioContext = null;
+            // analyser = null;
+            // sourceNode = null;
+            // mediaRecorder = null;
+            // audioChunks = [];
+
+            console.log("🛑 FULL STOP COMPLETE");
+            isToggleRecording = false;
+        }
+
+        function forceStopRecording() {
+            manualStop = true;
+            isRecording = false;
+
+            // UI reset
+            micBtn.classList.remove("recording");
+            micBtn.classList.add("off");
+            micBtn.textContent = "🎤";
+
+            stopWaveform();
+
+            // Kill recorder
+            if (mediaRecorder) {
+                try { mediaRecorder.onstop = null; } catch (e) { }
+                try { if (mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch (e) { }
+            }
+
+            // Kill audio stream
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+
+            // Kill context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            analyser = null;
+            mediaRecorder = null;
+            audioChunks = [];
+
+            console.log("💀 HARD SHUTDOWN COMPLETE");
+        }
+
+        /* ======================================================
+            CONTINUOUS RECORDING ENGINE WITH SILENCE DETECTION
+            ====================================================== */
+        async function startContinuousRecording() {
+            console.log("🎙️ Initializing continuous recording…");
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            currentStream = stream;
+
+            audioContext = new AudioContext();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+
+            sourceNode = audioContext.createMediaStreamSource(stream);
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 2.5;  // 250% louder
+            sourceNode.connect(gainNode);
+            gainNode.connect(analyser);
+
+
+            startWaveform();
+
+            // MIME selection (correct logic)
+            let mimeType = "";
+            if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+                mimeType = "audio/webm;codecs=opus";
+            } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+                mimeType = "audio/webm";
+            } else if (MediaRecorder.isTypeSupported("audio/ogg")) {
+                mimeType = "audio/ogg";
+            }
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+            console.log("🔧 Recorder created. mimeType =", mediaRecorder.mimeType);
+
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+                console.log("📦 Chunk arrived:", e.data.size, "bytes");
+            };
+
+            if (manualStop) return;
+
+            // Silence detection
+            let silenceStart = null;
+            function detectSilence() {
+                if (!analyser || !isRecording) return;
+
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(data);
+
+                const volume = data.reduce((a, b) => a + b, 0) / data.length;
+
+                const silent = volume < 10; // unchanged threshold
+                console.log("Volume:", volume, "Silent:", silent);
+
+                if (silent && !silenceStart) silenceStart = performance.now();
+                if (!silent) silenceStart = null;
+
+                if (silenceStart && performance.now() - silenceStart > 2000) { // unchanged 2000ms
+                    console.log("🔇 Silence threshold reached — stopping");
+                    if (mediaRecorder.state === "recording") mediaRecorder.stop();
+                    return;
+                }
+
+                requestAnimationFrame(detectSilence);
+            }
+
+            detectSilence();
+
+            mediaRecorder.onstop = async () => {
+                console.log("⏹️ MEDIARECORDER STOPPED");
+                console.log("Total audio chunks:", audioChunks.length);
+                console.log("Manual stop:", manualStop);
+                console.log("Still in recording mode:", isRecording);
+                console.log("🚫 onstop TRIGGERED");
+
+                const chunksToSend = audioChunks.slice(); // copy
+                audioChunks = [];  // reset for next round
+
+                if (!chunksToSend.length) {
+                    console.log("⚠️ No audio chunks captured, nothing to send.");
+                } else {
+                    console.log("🎯 Sending audio to backend...");
+                    await sendVoiceQuery(chunksToSend);
+                }
+
+                // Auto-restart ONLY if this was NOT a manual stop
+                if (!manualStop && isRecording) {
+                    console.log("🔄 Auto-restarting recording...");
+                    setTimeout(() => {
+                        if (!manualStop && isRecording) {
+                            startContinuousRecording();
+                        }
+                    }, 200);
+                } else {
+                    console.log("🟡 Not restarting (manual stop or recording flag off).");
+                }
+            };
+            mediaRecorder.start();
+            console.log("🔴 Recording started");
+        }
+
+        /* ======================================================
+            SEND AUDIO TO BACKEND
+            ====================================================== */
+        async function sendVoiceQuery(chunks = null) {
+                const dataChunks = chunks || audioChunks;
+                if (!dataChunks.length) return;
+
+                setVoiceStatus("Thinking…");
+
+                const blob = new Blob(dataChunks, { type: "audio/webm" });
+                const fd = new FormData();
+                fd.append("audio", blob, "query.webm");
+                fd.append("voice", voiceSelector.value);
+
+                try {
+                    const res = await fetch("/api/voice-query", {
+                        method: "POST",
+                        body: fd
+                    });
+
+                    if (!res.ok) {
+                        console.error("❌ Voice processing failed", await res.text());
+                        showNotification("❌ Voice processing failed", "error");
+                        setVoiceStatus("Listening…");
+                        return;
+                    }
+
+                    const audioBlob = await res.blob();
+                    const url = URL.createObjectURL(audioBlob);
+
+                    const player = document.getElementById("ttsPlayer");
+                    player.src = url;
+
+                    setVoiceStatus("Speaking…");
+                    player.onended = () => setVoiceStatus("Listening…");
+
+                    await player.play();
+
+                } catch (err) {
+                    console.error("❌ Voice send error:", err);
+                    showNotification("❌ Voice send error", "error");
+                    setVoiceStatus("Listening…");
+                }
+            }
+
+        // ======================
+        // CITATION TOGGLE
+        // ======================
+
+        function toggleCitations() {
+            showCitations = document.getElementById("citationToggle").checked;
+            showNotification(
+                showCitations ? "📚 Citations ON" : "📚 Citations OFF",
+                "info"
+            );
+        }
+
+        // ======================
+        // NOTIFICATION POPUP
+        // ======================
+
+        function showNotification(msg, type = "success") {
+            const n = document.getElementById("notification");
+            n.textContent = msg;
+            n.className = `notification ${type} show`;
+
+            setTimeout(() => n.classList.remove("show"), 3000);
+        }
+
+    </script>
+</body>
+
+</html>
