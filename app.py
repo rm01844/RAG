@@ -23,6 +23,15 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from dotenv import load_dotenv
 
+import json, os
+
+if "GOOGLE_CREDENTIALS_JSON" in os.environ:
+    creds_path = "google_creds.json"
+    with open(creds_path, "w") as f:
+        f.write(os.environ["GOOGLE_CREDENTIALS_JSON"])
+
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
 # Configuration
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
