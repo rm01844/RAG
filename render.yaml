@@ -4,31 +4,24 @@ services:
     runtime: python
     plan: starter
 
-    nixpacks:
-      config:
-        packages:
-          - ffmpeg
-
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
 
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.12
-
+        value: "3.10.12"
       - key: GOOGLE_CREDENTIALS_JSON
         sync: false
-
       - key: PROJECT_ID
         sync: false
-
       - key: LOCATION
-        value: us-central1
-
+        value: "us-central1"
       - key: COMPANY_NAME
-        value: Your Company
-
+        value: "Your Company"
       - key: SECRET_KEY
         generateValue: true
-
       - key: SUPERADMIN_OTP
         sync: false
+
+    nixpacksConfig:
+      packages:
+        - ffmpeg
