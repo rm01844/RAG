@@ -3,13 +3,13 @@ services:
     name: rag-voice-app
     runtime: python
     plan: starter
-    buildCommand: ""
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
 
-  nixpacks:
-  config:
-    packages:
-      - ffmpeg
+    nixpacks:
+      config:
+        packages:
+          - ffmpeg
+
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
 
     envVars:
       - key: PYTHON_VERSION
