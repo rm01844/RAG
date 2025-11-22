@@ -3,6 +3,7 @@ services:
     name: rag-voice-app
     runtime: python
     plan: starter
+    autoDeploy: true
 
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
 
