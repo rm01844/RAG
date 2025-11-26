@@ -23,7 +23,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from dotenv import load_dotenv
 
-import json, os
+import json, os, traceback
 
 if "GOOGLE_CREDENTIALS_JSON" in os.environ:
     creds_path = "google_creds.json"
@@ -221,58 +221,82 @@ def check_admin():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Text-based chat endpoint with conversation memory"""
+    """Text chat endpoint with memory + hybrid fallback"""
     try:
         data = request.get_json()
-        message = data.get('message', '').strip()
-        session_id = data.get('session_id', 'default')
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", "default")
 
         if not message:
-            return jsonify({'error': 'Empty message'}), 400
+            return jsonify({"error": "Empty message"}), 400
 
         if not rag_pipeline:
-            return jsonify({'error': 'RAG system not initialized'}), 500
+            return jsonify({"error": "RAG system not initialized"}), 500
 
-        # Get conversation history
+        # --- Conversation history (optional use) ---
         history = get_conversation_history(session_id)
 
-        # Build context from history
-        context = ""
+        context_block = ""
         if history:
-            context = "Previous conversation:\n"
-            for msg in history[-6:]:  # Last 3 exchanges
+            context_block = "Previous conversation:\n"
+            for msg in history[-6:]:
                 role = "User" if msg["role"] == "user" else "Assistant"
-                context += f"{role}: {msg['content']}\n"
-            context += "\n"
+                context_block += f"{role}: {msg['content']}\n"
+            context_block += "\n"
 
-        # Get response with context
+        # --- Run RAG ---
         result = rag_pipeline.query(
             message,
             top_k=3,
             min_score=0.1,
-            show_citations=data.get('show_citations', False),
+            show_citations=data.get("show_citations", False)
         )
 
+        rag_answer = result.get("answer", "")
+        context_text = result.get("context", "")
+
+        # ---------- HYBRID FALLBACK ----------
+        if not rag_answer or "not find" in rag_answer.lower():
+            print("📌 No strong RAG match → GENERIC answer mode")
+
+            generic_prompt = f"""
+            You are a helpful assistant. The user asked:
+
+            "{message}"
+
+            Provide a short factual explanation that is GENERAL, not company-specific.
+            Avoid hallucinating company info."""
+
+            generic_response = rag_pipeline.llm.generate(generic_prompt)
+            generic_text = generic_response.strip()
+
+            final_answer = f"""
+            General Explanation:  
+            {generic_text}"""
+            
+        else:
+            final_answer = rag_answer
+        # ---------------------------------------
+
         # Save to history
-        add_to_conversation_history(session_id, message, result['answer'])
+        add_to_conversation_history(session_id, message, final_answer)
 
         return jsonify({
-            'answer': result['answer'],
-            'sources': result['sources'],
-            'confidence': result.get('confidence', 0.0),
-            'timestamp': datetime.now().isoformat()
+            "answer": final_answer,
+            "sources": result.get("sources", []),
+            "confidence": result.get("confidence", 0.0),
+            "timestamp": datetime.now().isoformat()
         })
 
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        import traceback
         logger.error(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/voice-query', methods=['POST'])
 def voice_query():
-    """Voice-based query endpoint (audio in, audio out)"""
+    """Voice endpoint: audio → text → RAG → TTS"""
     try:
         if not voice_interface:
             return jsonify({'error': 'Voice interface not available'}), 503
@@ -281,36 +305,34 @@ def voice_query():
             return jsonify({'error': 'No audio file provided'}), 400
 
         audio_file = request.files['audio']
-        voice = request.form.get("voice", "en-US-Neural2-J")  # <-- NEW
+        voice = request.form.get('voice', 'en-US-Neural2-J')
+
+        if audio_file.filename == "":
+            return jsonify({'error': 'No file selected'}), 400
 
         logger.info(
-            f"Received audio file: {audio_file.filename}, content_type: {audio_file.content_type}")
+            f"🎤 Received: {audio_file.filename} ({audio_file.content_type})")
         logger.info(f"File size: {len(audio_file.read())} bytes")
         audio_file.seek(0)
 
-        if audio_file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-
-        # Save uploaded audio
+        # Save audio temporarily
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         input_filename = f"input_{timestamp}.webm"
         input_path = os.path.join(app.config['AUDIO_FOLDER'], input_filename)
         audio_file.save(input_path)
 
-        logger.info(f"🎤 Received audio: {input_path}")
-
-        # Transcribe audio to text
+        # ---------- Speech-to-Text ----------
         transcript = voice_interface.transcribe_audio(input_path)
 
         if not transcript:
             return jsonify({'error': 'Could not transcribe audio'}), 400
 
-        logger.info(f"📝 Transcribed: {transcript}")
+        logger.info(f"📝 Transcript: {transcript}")
 
-        # Get RAG response
         if not rag_pipeline:
             return jsonify({'error': 'RAG system not initialized'}), 500
 
+        # ---------- RAG QUERY ----------
         result = rag_pipeline.query(
             transcript,
             top_k=3,
@@ -318,15 +340,37 @@ def voice_query():
             show_citations=False
         )
 
-        answer_text = result['answer']
-        logger.info(f"💬 Response: {answer_text[:100]}...")
+        rag_answer = result.get("answer", "")
+        context_text = result.get("context", "")
 
-        # Synthesize speech response
+        # ---------- HYBRID LOGIC ----------
+        if not rag_answer or "not find" in rag_answer.lower():
+            print("📌 No strong RAG → generic fallback")
+
+            generic_prompt = f"""
+            The user said: "{transcript}"
+
+            Provide a short general explanation.
+            Do not invent company information."""
+
+            generic_response = rag_pipeline.llm.generate(generic_prompt)
+            generic_text = generic_response.strip()
+
+            final_answer = f"""
+            General Explanation:
+            {generic_text}"""
+            
+        else:
+            final_answer = rag_answer
+
+        logger.info(f"💬 Final answer: {final_answer[:120]}...")
+
+        # ---------- Text-to-Speech ----------
         output_filename = f"output_{timestamp}.mp3"
         output_path = os.path.join(app.config['AUDIO_FOLDER'], output_filename)
 
         success = voice_interface.synthesize_speech(
-            answer_text,
+            final_answer,
             output_path,
             voice_name=voice
         )
@@ -334,9 +378,8 @@ def voice_query():
         if not success:
             return jsonify({'error': 'Speech synthesis failed'}), 500
 
-        logger.info(f"🔊 Audio generated: {output_path}")
+        logger.info(f"🔊 Generated speech: {output_path}")
 
-        # Return audio file
         return send_file(
             output_path,
             mimetype='audio/mpeg',
@@ -346,7 +389,6 @@ def voice_query():
 
     except Exception as e:
         logger.error(f"Voice query error: {e}")
-        import traceback
         logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
