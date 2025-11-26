@@ -335,7 +335,7 @@ class RAGPipeline:
             Extract team member information from the context below.
             
             When listing team members, use this format:
-            - **Name**: [Full Name]
+            - Name: [Full Name]
               - Role: [Job Title]
             
             Rules:
@@ -366,8 +366,8 @@ class RAGPipeline:
 
             Format:
 
-            **General Explanation:** (your generic knowledge)
-            **Company Document Match:** (context-based answer or “no match”)
+            General Explanation: (your generic knowledge)
+            Company Document Match: (context-based answer or “no match”)
 
             Context:
             {context}
