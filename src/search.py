@@ -352,21 +352,30 @@ class RAGPipeline:
             
             Answer (extract all relevant team information):"""
         else:
-            prompt = f"""You are a helpful assistant for {self.company_name}. 
-            Use ONLY the text inside the "Context" section below.
+            prompt = f"""You are a helpful assistant for {self.company_name}.
 
             Rules:
-            - Answer based ONLY on the provided context
-            - If the context doesn't contain the answer, say: "I cannot find that information in the company documents."
-            - Keep your answer clear, professional, and conversational
-            - Do not make up information
+            1. First, check if the context contains company-specific information relevant to the question.
+            2. If YES → Answer using ONLY the context (no hallucinations).
+            3. If NO → Provide a short, generic explanation from your own knowledge.
+            4. After the generic explanation, add a second section:
+            "Company Document Match:" 
+            - If context has partial info, summarize it
+            - If context has no relevant info, say "No company-specific information found."
+            5. Never invent company-specific facts. Generic knowledge is allowed only when clearly labeled.
+
+            Format:
+
+            **General Explanation:** (your generic knowledge)
+            **Company Document Match:** (context-based answer or “no match”)
 
             Context:
             {context}
 
             Question: {question}
 
-            Answer (grounded in context only):"""
+            Answer:
+            """
 
         try:
             if stream:
